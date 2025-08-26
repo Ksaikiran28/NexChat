@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState } from "react";
-import { AuthContext } from './AuthContext.jsx';
+import { AuthContext } from "./AuthContext.jsx";
 import toast from "react-hot-toast";
 
 export const ChatContext = createContext();
@@ -12,7 +12,9 @@ export const ChatProvider = ({ children }) => {
 
   const { socket, axios } = useContext(AuthContext);
 
-  // 🔹 Get all users
+  // -----------------------------
+  // Fetch all users (except logged-in)
+  // -----------------------------
   const getUsers = async () => {
     try {
       const { data } = await axios.get("/api/messages/users");
@@ -25,14 +27,16 @@ export const ChatProvider = ({ children }) => {
     }
   };
 
-  // 🔹 Get messages with selected user
+  // -----------------------------
+  // Fetch messages with selected user
+  // -----------------------------
   const getMessages = async (userId) => {
     try {
       const { data } = await axios.get(`/api/messages/${userId}`);
       if (data.success) {
         setMessages(data.messages);
 
-        // reset unseen count
+        // Reset unseen messages count for this user
         setUnseenMessages((prev) => {
           const updated = { ...prev };
           delete updated[userId];
@@ -44,11 +48,16 @@ export const ChatProvider = ({ children }) => {
     }
   };
 
-  // 🔹 Send message
+  // -----------------------------
+  // Send a message
+  // -----------------------------
   const sendMessage = async (messageData) => {
     if (!selectedUser) return toast.error("No user selected!");
     try {
-      const { data } = await axios.post(`/api/messages/send/${selectedUser._id}`, messageData);
+      const { data } = await axios.post(
+        `/api/messages/send/${selectedUser._id}`,
+        messageData
+      );
       if (data.success) {
         setMessages((prev) => [...prev, data.newMessage]);
       } else {
@@ -59,7 +68,9 @@ export const ChatProvider = ({ children }) => {
     }
   };
 
-  // 🔹 Delete message
+  // -----------------------------
+  // Delete a message
+  // -----------------------------
   const deleteMessage = async (messageId) => {
     try {
       const { data } = await axios.delete(`/api/messages/${messageId}`);
@@ -74,18 +85,23 @@ export const ChatProvider = ({ children }) => {
     }
   };
 
-  // 🔹 Socket unsubscribe
+  // -----------------------------
+  // Socket: unsubscribe from messages
+  // -----------------------------
   const unsubscribeFromMessages = () => {
     if (socket) socket.off("newMessage");
   };
 
-  // 🔹 Socket subscribe
+  // -----------------------------
+  // Socket: subscribe to messages
+  // -----------------------------
   const subscribeToMessages = () => {
     if (!socket) return () => {};
 
     unsubscribeFromMessages();
 
     socket.on("newMessage", async (newMessage) => {
+      // If message belongs to current chat
       if (
         selectedUser &&
         (newMessage.senderId === selectedUser._id ||
@@ -93,12 +109,15 @@ export const ChatProvider = ({ children }) => {
       ) {
         newMessage.seen = true;
         setMessages((prev) => [...prev, newMessage]);
+
+        // Mark as seen in backend
         try {
           await axios.put(`/api/messages/mark/${newMessage._id}`);
-        } catch (error) {
-          console.error("Error marking message seen:", error);
+        } catch (err) {
+          console.error("Error marking message seen:", err);
         }
       } else {
+        // Increment unseen count
         setUnseenMessages((prev) => ({
           ...prev,
           [newMessage.senderId]: prev[newMessage.senderId]
@@ -107,10 +126,13 @@ export const ChatProvider = ({ children }) => {
         }));
       }
     });
+
     return () => unsubscribeFromMessages();
   };
 
-  // Reset unseen count when switching user
+  // -----------------------------
+  // Reset unseen count when switching users
+  // -----------------------------
   useEffect(() => {
     if (selectedUser) {
       setUnseenMessages((prev) => {
@@ -121,22 +143,28 @@ export const ChatProvider = ({ children }) => {
     }
   }, [selectedUser]);
 
+  // -----------------------------
+  // Subscribe to socket messages
+  // -----------------------------
   useEffect(() => {
     const unsubscribe = subscribeToMessages();
     return unsubscribe;
   }, [socket, selectedUser]);
 
+  // -----------------------------
+  // Context value
+  // -----------------------------
   const value = {
     messages,
     users,
     selectedUser,
-    getUsers,
-    getMessages,
-    sendMessage,
-    deleteMessage,   // 🔹 Expose delete
     setSelectedUser,
     unseenMessages,
     setUnseenMessages,
+    getUsers,
+    getMessages,
+    sendMessage,
+    deleteMessage,
   };
 
   return <ChatContext.Provider value={value}>{children}</ChatContext.Provider>;
