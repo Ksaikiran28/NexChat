@@ -4,6 +4,8 @@ import help_icon from './help_icon.png'
 import logo_icon from './logo_icon.svg'
 import logo_big from './logo_big.svg'
 import logo from './logo.png'
+import logo4 from './logo4.png'
+import logo3 from './logo3.png'
 import profile_richard from './profile_richard.png'
 import profile_alison from './profile_alison.png'
 import profile_enrique from './profile_enrique.png'
@@ -29,6 +31,8 @@ const assets = {
     logo_big,
     logo_icon,
     logo,
+    logo3,
+    logo4,
     search_icon,
     send_button,
     menu_icon,
